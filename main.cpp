@@ -1,11 +1,16 @@
 #include <iostream>
 #include <unistd.h>
+#include <cstring>
+#include <cerrno>
+#include <cstdio>
+#include <dirent.h>
 #include <sys/types.h>
 #include <sys/ptrace.h>
 #include <sys/wait.h>
 #include <vector>
 #include <string>
 #include <wchar.h>
+#include <ncurses.h>
 #include "structs.h"
 
 template < typename T >
@@ -13,7 +18,14 @@ template < typename T >
     const T & value) {
     long data = value;
     ptrace(PTRACE_POKEDATA, pid, address, data);
-  }
+}
+
+template <>
+void WPM<Position>(pid_t pid, void * address, const Position & value) {
+  ptrace(PTRACE_POKEDATA, pid, address, value.x);
+  ptrace(PTRACE_POKEDATA, pid, address + sizeof(value.x), value.y);
+  ptrace(PTRACE_POKEDATA, pid, address + 2 * sizeof(value.x), value.z);
+}
 
 void print_ctrl() {
   std::cout << "[Numpad 0]  Enable god mode\n";
@@ -23,8 +35,8 @@ void print_ctrl() {
 }
 
 void god_mode(unsigned long health_address, pid_t pid) {
-  int newHealth = 999999;
-  WPM(pid, health_address, newHealth);
+  int newHealth = 696969;
+  WPM(pid, &health_address, newHealth);
 
   std::cout << "\nEnabled god mode.\r\n";
   sleep(3);
@@ -35,11 +47,11 @@ void god_mode(unsigned long health_address, pid_t pid) {
 void infinite_ammo(unsigned long pweap_address, unsigned long pReserve_address,
   unsigned long sweap_address, unsigned long sReserve_address, pid_t pid) {
   int newAmmo = 99999;
-  WPM(pid, pweap_address, newAmmo);
-  WPM(pid, pReserve_address, newAmmo);
+  WPM(pid, &pweap_address, newAmmo);
+  WPM(pid, &pReserve_address, newAmmo);
 
-  WPM(pid, sweap_address, newAmmo);
-  WPM(pid, sReserve_address, newAmmo);
+  WPM(pid, &sweap_address, newAmmo);
+  WPM(pid, &sReserve_address, newAmmo);
 
   std::cout << "\nInfinite ammo enabled\r\n";
   sleep(3);
@@ -49,7 +61,7 @@ void infinite_ammo(unsigned long pweap_address, unsigned long pReserve_address,
 
 void infinite_armor(unsigned long armor_address, pid_t pid) {
   int newarmor = 99999;
-  WPM(pid, armor_address, newarmor);
+  WPM(pid, &armor_address, newarmor);
   std::cout << "\nEnabled infinite armor." << std::endl;
   sleep(3);
   std::cout << "\033[2J\033[1;1H";
@@ -62,7 +74,8 @@ void teleport(unsigned long position_address, pid_t pid) {
   Position pos;
   std::cin >> pos.x >> pos.y >> pos.z;
 
-  WPM(pid, position_address, pos);
+  WPM(pid, (void*)position_address, pos);
+  //WPM(pid, position_address, pos);
   std::cout << "\nTeleported to location." << std::endl;
   sleep(3);
   std::cout << "\033[2J\033[1;1H";
@@ -130,18 +143,31 @@ int main() {
 
   print_ctrl();
 
-  while (true) {
-    if (GetAsyncKeyState(VK_NUMPAD0)) {
+    initscr();
+    noecho();
+    cbreak();
+    keypad(stdscr, TRUE);
+
+ while (1) {
+    int c = getch(); // Get the next key press
+
+    if (c == KEY_NUMPAD0) {
       god_mode(phealth_address, procid);
-    }
-    if (GetAsyncKeyState(VK_NUMPAD1)) {
+      std::cout << "Numpad 0 was pressed." << std::endl;
+    } else if (c == KEY_NUMPAD1) {
       infinite_ammo(pweap_address, pReserve_address, sweap_address, sReserve_address, procid);
-    }
-    if (GetAsyncKeyState(VK_NUMPAD2)) {
+      std::cout << "Numpad 1 was pressed." << std::endl;
+    } else if (c == KEY_NUMPAD2) {
       infinite_armor(armor_address, procid);
-    }
-    if (GetAsyncKeyState(VK_NUMPAD3)) {
+      std::cout << "Numpad 2 was pressed." << std::endl;
+    } else if (c == KEY_NUMPAD3) {
       teleport(position_address, procid);
+      std::cout << "Numpad 3 was pressed." << std::endl;
+    }
+
+    if (c == 'q') {
+      // Quit the program
+      break;
     }
   }
   return 0;
