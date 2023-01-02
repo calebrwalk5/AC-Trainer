@@ -117,7 +117,7 @@ pid_t GetProcId(const char * processName) {
 
 int main() {
   pid_t procid;
-  procid = GetProcId("ac_client.exe");
+  procid = GetProcId("ac_client");
   if (!procid) {
     std::cout << "AssaultCube process not found." << std::endl;
     return 0;
